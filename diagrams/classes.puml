@@ -1,0 +1,83 @@
+@startuml SteamStorm
+
+' --- Entidades base ---
+class Persona {
+  - idPersona : int
+  - nombre : string
+  - correo : string
+  + iniciarSesion() : boolean
+  + cerrarSesion() : void
+}
+
+' --- Subclases que dependen de Persona ---
+class Usuario {
+  - nickname : string
+  + agregarReseña(juego: Juego, reseña: Reseña) : void
+  + verRanking() : Ranking
+  + agregarAlCarrito(juego: Juego) : void
+}
+
+class Administrador {
+  + gestionarJuego(juego: Juego) : void
+  + gestionarUsuarios() : void
+}
+
+' --- Clases funcionales ---
+class Reseña {
+  - idReseña : int
+  - comentario : string
+  - puntuacion : int
+  - fecha : Date
+  + mostrarReseña() : void
+}
+
+class Juego {
+  - idJuego : int
+  - nombre : string
+  - genero : string
+  - precio : float
+  - puntuacionGlobal : float
+  + calcularPuntuacion() : float
+  + mostrarDetalles() : void
+}
+
+class Ranking {
+  - idRanking : int
+  - listaJuegos : List<Juego>
+  + ordenarPorPuntuacion() : void
+  + mostrarTop10() : List<Juego>
+}
+
+class SteamAPI {
+  + obtenerJuegos() : List<Juego>
+  + obtenerDetallesJuego(id:int) : Juego
+}
+
+class AsistenteIA {
+  - idAsistente : int
+  - nombre : string
+  + recomendarJuego(usuario: Usuario) : List<Juego>
+  + analizarPreferencias(usuario: Usuario) : void
+}
+
+class Carrito {
+  - idCarrito : int
+  - juegos : List<Juego>
+  - total : float
+  + agregarJuego(juego: Juego) : void
+  + calcularTotal() : float
+}
+
+' --- Relaciones de dependencia y herencia ---
+Persona <|-- Usuario
+Persona <|-- Administrador
+Usuario *-- Carrito : posee
+Usuario *-- Reseña : escribe
+Juego o-- Reseña : tiene
+Ranking *-- Juego : incluye
+SteamAPI ..> Juego : consulta
+Administrador *-- Juego : administra
+AsistenteIA ..> Usuario : analiza
+AsistenteIA ..> Juego : recomienda
+
+@enduml
