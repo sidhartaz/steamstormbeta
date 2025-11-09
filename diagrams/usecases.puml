@@ -1,0 +1,43 @@
+@startuml
+
+left to right direction
+
+actor Usuario
+actor Administrador
+actor AsistenteIA
+
+Usuario --> (Registrar usuario)
+Usuario --> (Iniciar sesión)
+Usuario --> (Buscar videojuegos)
+Usuario --> (Comprar videojuegos)
+Usuario --> (Dejar reseña)
+Usuario --> (Ver perfil)
+Usuario --> (Gestionar lista de deseos)
+Usuario --> (Recibir recomendaciones)
+Usuario --> (Reportar problema)
+
+Administrador --> (Gestionar usuarios)
+Administrador --> (Gestionar videojuegos)
+Administrador --> (Gestionar reseñas)
+Administrador --> (Generar reportes)
+Administrador --> (Configurar sistema)
+
+AsistenteIA --> (Proveer asistencia)
+AsistenteIA --> (Responder preguntas)
+AsistenteIA --> (Sugerir videojuegos)
+AsistenteIA --> (Ofrecer soporte técnico)
+
+(Ver perfil) --> (Iniciar sesión) : <<include>>
+(Gestionar lista de deseos) --> (Iniciar sesión) : <<include>>
+(Comprar videojuegos) --> (Iniciar sesión) : <<include>>
+(Dejar reseña) --> (Iniciar sesión) : <<include>>
+(Reportar problema) --> (Iniciar sesión) : <<include>>
+(Gestionar usuarios) --> (Iniciar sesión) : <<include>>
+(Gestionar videojuegos) --> (Iniciar sesión) : <<include>>
+(Gestionar reseñas) --> (Iniciar sesión) : <<include>>
+(Generar reportes) --> (Iniciar sesión) : <<include>>
+(Configurar sistema) --> (Iniciar sesión) : <<include>>
+(Proveer asistencia) --> (Responder preguntas) : <<include>>
+(Proveer asistencia) --> (Sugerir videojuegos) : <<include>>
+
+@enduml
