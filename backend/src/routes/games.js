@@ -1,7 +1,8 @@
 // src/routes/games.js
 import express from "express";
 import axios from "axios";
-import Game from "../models/Game.js"; // 👈 Importamos el modelo de MongoDB
+import Game from "../models/Game.js";
+import { getFromCache, saveInCache } from "../cache.js"; // 👈 NUEVO
 
 const router = express.Router();
 
@@ -16,11 +17,21 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 🔹 Importar un juego desde Steam y guardarlo/actualizarlo en MongoDB
+// 🔹 Importar un juego desde Steam (con caché)
 router.get("/import/:appId", async (req, res) => {
   const { appId } = req.params;
 
   try {
+    // 1️⃣ Revisar caché antes de consultar Steam
+    const cachedGame = getFromCache(appId);
+    if (cachedGame) {
+      console.log("🟢 Juego desde caché:", appId);
+      return res.json(cachedGame);
+    }
+
+    console.log("🔵 Consultando Steam API:", appId);
+
+    // 2️⃣ Llamar a la API de Steam
     const response = await axios.get(
       `https://store.steampowered.com/api/appdetails?appids=${appId}`
     );
@@ -32,7 +43,7 @@ router.get("/import/:appId", async (req, res) => {
 
     const gameData = data.data;
 
-    // Creamos o actualizamos el juego en MongoDB
+    // 3️⃣ Crear o actualizar en MongoDB
     const game = await Game.findOneAndUpdate(
       { steamId: appId },
       {
@@ -51,6 +62,10 @@ router.get("/import/:appId", async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // 4️⃣ Guardar también en caché
+    saveInCache(appId, game);
+
+    // 5️⃣ Responder al cliente
     res.json(game);
   } catch (error) {
     console.error("Error al obtener datos de Steam:", error.message);

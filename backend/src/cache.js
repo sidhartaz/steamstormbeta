@@ -1,13 +1,13 @@
 // src/cache.js
 
-// 🧠 Caché simple en memoria (solo vive mientras el servidor esté encendido)
+// 🧠 Caché simple en memoria (mientras el servidor esté encendido)
 const cache = new Map();
 
-// ⏰ Tiempo de vida: 1 hora (en milisegundos)
+// ⏱ Tiempo de vida: 1 hora
 const TTL_MS = 1000 * 60 * 60;
 
 /**
- * Devuelve un valor de caché si existe y no expiró.
+ * Obtiene un valor desde la caché.
  */
 export function getFromCache(key) {
   const entry = cache.get(key);
@@ -15,7 +15,7 @@ export function getFromCache(key) {
 
   const isExpired = Date.now() - entry.timestamp > TTL_MS;
   if (isExpired) {
-    cache.delete(key); // limpia si expiró
+    cache.delete(key);
     return null;
   }
 
@@ -26,8 +26,5 @@ export function getFromCache(key) {
  * Guarda un valor en la caché.
  */
 export function saveInCache(key, value) {
-  cache.set(key, {
-    value,
-    timestamp: Date.now(),
-  });
+  cache.set(key, { value, timestamp: Date.now() });
 }
