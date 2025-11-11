@@ -1,218 +1,221 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 
-export default function Ranking() {
+export default function RankingMAL() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [sortBy, setSortBy] = useState("rating");
-  const [filter, setFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("score");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const gamesPerPage = 10;
+  const gamesPerPage = 20;
+  const API_URL = "https://steamstormbeta.onrender.com/api/games";
 
-  // ✅ Lista de 50 juegos (IDs de Steam)
- const appIds = [
-  // 🎮 Top Populares y Competitivos
-  "730", "570", "578080", "1172470", "252490", "381210", "271590", "1091500",
-  "1506830", "1085660", "440", "359550", "1172470", "1222730", "1174180", "238960",
-  "381210", "1245620", "1938090", "1551360",
+  // 💰 Limpieza robusta de precios
+  const cleanPrice = (p) => {
+    if (!p) return 0;
+    if (typeof p === "string") {
+      if (p.toLowerCase().includes("free")) return 0;
+      const match = p.match(/[\d,.]+/);
+      return match ? parseFloat(match[0].replace(",", ".")) : 0;
+    }
+    if (p > 2000) return p / 100; // precios en centavos
+    return Number(p) || 0;
+  };
 
-  // 🧭 Estrategia y Simulación
-  "394360", "289070", "292030", "236850", "1029780", "227300", "294100", "600760",
-  "255710", "1124300", "1184370", "814380", "1850570", "281990", "447020", "1263850",
-  "1158310", "1328670", "228380", "813780",
+  const normalize = (value, min, max) => (value - min) / (max - min || 1);
 
-  // ⚔️ RPGs y Aventuras
-  "582010", "367520", "1238810", "1248130", "1091500", "413150", "1259420", "1086940",
-  "632360", "1174180", "105600", "1281930", "1361210", "1182480", "1551360", "548430",
-  "632470", "4000", "8930", "582660",
-
-  // 💀 Terror, Suspenso y Acción
-  "418370", "1196590", "1016800", "319630", "1104840", "814380", "1623730", "1172380",
-  "1872170", "239140", "594650", "1326470", "221100", "383870", "1672970", "1361000",
-  "1150690", "1063730", "1127400", "22380",
-
-  // 🚀 Indie, Plataformas y Casual
-  "413150", "504230", "620980", "294100", "1222140", "362890", "200510", "1557740",
-  "600370", "1113560", "972660", "1172470", "963630", "238960", "813780", "269210",
-  "812140", "274190", "227940", "700330"
-];
-
-
-  // ✅ Carga de juegos en lotes de 10 para no saturar Render
+  // ⚙️ Carga de datos con límite seguro
   useEffect(() => {
-    const fetchInBatches = async () => {
-      const batchSize = 10;
-      const total = appIds.length;
-      let loaded = 0;
-
+    const fetchGames = async () => {
       try {
-        for (let i = 0; i < total; i += batchSize) {
-          const batch = appIds.slice(i, i + batchSize);
-
-          const responses = await Promise.all(
-            batch.map((id) =>
-              axios.get(`https://steamstormbeta.onrender.com/api/games/import/${id}`)
-            )
-          );
-
-          const newGames = responses.map((r) => r.data);
-          setGames((prev) => [...prev, ...newGames]);
-
-          // progreso visual
-          loaded += batch.length;
-          setProgress(Math.min((loaded / total) * 100, 100));
-
-          // Espera entre lotes (para no saturar el backend free)
-          await new Promise((res) => setTimeout(res, 800));
-        }
+        const { data } = await axios.get(API_URL);
+        const top200 = data.slice(0, 200);
+        setGames(top200);
       } catch (err) {
-        console.error("Error al obtener los juegos:", err);
-        setError("Error al cargar los juegos. Intenta más tarde.");
+        setError("No se pudieron cargar los juegos.");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchInBatches();
+    fetchGames();
   }, []);
 
-  // ✅ Loader con progreso visual
-  if (loading && games.length === 0)
+  // 🧮 Ranking ponderado
+  const rankedGames = useMemo(() => {
+    if (!games.length) return [];
+    const ratings = games.map((g) => g.rating || 0);
+    const reviews = games.map((g) => g.reviews || 0);
+    const prices = games.map((g) => cleanPrice(g.price));
+
+    const minRating = Math.min(...ratings);
+    const maxRating = Math.max(...ratings);
+    const minReviews = Math.min(...reviews);
+    const maxReviews = Math.max(...reviews);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
+    return games.map((g) => {
+      const normRating = normalize(g.rating || 0, minRating, maxRating);
+      const normReviews = normalize(g.reviews || 0, minReviews, maxReviews);
+      const normPrice = 1 - normalize(cleanPrice(g.price), minPrice, maxPrice);
+      const score = normRating * 0.5 + normReviews * 0.3 + normPrice * 0.2;
+      return { ...g, price: cleanPrice(g.price), score };
+    });
+  }, [games]);
+
+  // 🔎 Filtro por búsqueda
+  const filtered = rankedGames.filter((g) =>
+    g.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // 🔽 Orden dinámico
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case "reviews":
+        return b.reviews - a.reviews;
+      case "price":
+        return a.price - b.price;
+      case "name":
+        return a.name.localeCompare(b.name);
+      default:
+        return b.score - a.score;
+    }
+  });
+
+  // 📄 Paginación
+  const totalPages = Math.ceil(sorted.length / gamesPerPage);
+  const startIndex = (currentPage - 1) * gamesPerPage;
+  const currentGames = sorted.slice(startIndex, startIndex + gamesPerPage);
+
+  if (loading)
     return (
-      <div className="flex flex-col items-center justify-center mt-20 text-center text-gray-300">
-        <p className="text-lg mb-3">
-          Cargando juegos... {progress.toFixed(0)}%
-        </p>
-        <p className="text-sm mb-4">
-          {Math.round((progress / 100) * appIds.length)} de {appIds.length} juegos cargados
-        </p>
+      <div className="flex flex-col items-center justify-center mt-20 text-gray-300">
+        <p className="text-lg mb-3">Cargando ranking...</p>
         <div className="w-3/4 sm:w-1/2 bg-gray-700 rounded-full h-4">
-          <div
-            className="bg-yellow-400 h-4 rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          ></div>
+          <div className="bg-yellow-400 h-4 rounded-full animate-pulse"></div>
         </div>
       </div>
     );
 
   if (error)
-    return (
-      <p className="text-center mt-10 text-red-500 font-semibold">
-        {error}
-      </p>
-    );
+    return <p className="text-center mt-10 text-red-500 font-semibold">{error}</p>;
 
-  // ✅ Filtrado por género
-  const filteredGames = games.filter(
-    (g) => filter === "" || g.genre?.toLowerCase().includes(filter.toLowerCase())
-  );
-
-  // ✅ Ordenamiento dinámico
-  const sortedGames = [...filteredGames].sort((a, b) => {
-    if (sortBy === "reviews") return b.reviews - a.reviews;
-    if (sortBy === "price") return b.price - a.price;
-    return b.rating - a.rating;
-  });
-
-  // ✅ Paginación
-  const totalPages = Math.ceil(sortedGames.length / gamesPerPage);
-  const startIndex = (currentPage - 1) * gamesPerPage;
-  const currentGames = sortedGames.slice(startIndex, startIndex + gamesPerPage);
-
-  const nextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-  const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-
+  // 🏆 Interfaz tipo MyAnimeList con enlaces a Steam
   return (
-    <div className="p-6 text-center text-white">
-      <h1 className="text-4xl font-bold mb-6">
-        Ranking de Juegos <span className="text-yellow-400">🔥</span>
+    <div className="max-w-6xl mx-auto p-4 text-white">
+      <h1 className="text-4xl font-bold text-center mb-6 text-yellow-400">
+        🎮 SteamStorm - Ranking Top 200
       </h1>
 
-      {/* Controles de filtrado y orden */}
-      <div className="flex flex-col sm:flex-row justify-center gap-4 mb-8">
+      {/* 🔍 Barra de búsqueda y orden */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Buscar juego..."
+          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-yellow-400 placeholder-gray-400"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
         <select
+          value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 focus:ring-2 focus:ring-yellow-400"
+          className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-yellow-400"
         >
-          <option value="rating">Mejor valoración</option>
+          <option value="score">Ranking global</option>
+          <option value="name">Nombre (A-Z)</option>
           <option value="reviews">Más reseñas</option>
-          <option value="price">Precio más alto</option>
-        </select>
-
-        <select
-          onChange={(e) => setFilter(e.target.value)}
-          className="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 focus:ring-2 focus:ring-yellow-400"
-        >
-          <option value="">Todos los géneros</option>
-          <option value="action">Acción</option>
-          <option value="strategy">Estrategia</option>
-          <option value="adventure">Aventura</option>
-          <option value="shooter">Shooter</option>
-          <option value="rpg">RPG</option>
+          <option value="price">Más baratos</option>
         </select>
       </div>
 
-      {/* 🏆 Lista de juegos */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {currentGames.map((game, index) => (
-          <div
-            key={`${game.steamId || game._id}-${index}`}
-            className={`p-4 rounded-xl shadow-lg hover:scale-105 transition-transform ${
-              index === 0 && currentPage === 1
-                ? "bg-yellow-500 text-black"
-                : index === 1 && currentPage === 1
-                ? "bg-gray-700"
-                : index === 2 && currentPage === 1
-                ? "bg-orange-600"
-                : "bg-gray-900"
-            }`}
-          >
-            <p className="text-sm text-gray-400 mb-2">
-              # {(startIndex + index + 1)}
-            </p>
-            <img
-              src={game.image}
-              alt={game.name}
-              className="rounded-lg mb-4 w-full h-48 object-cover"
-            />
-            <h2 className="text-2xl font-semibold mb-1">{game.name}</h2>
-            <p className="text-gray-300 text-sm mb-2">{game.genre}</p>
-            <p className="text-gray-200 mb-3">
-              ⭐ {game.rating} | 🗨️ {game.reviews} reseñas
-            </p>
-            <p className="font-bold text-green-400">
-              {game.price === 0 ? "Gratis" : `$${game.price}`}
-            </p>
-          </div>
-        ))}
+      {/* 🧾 Tabla principal */}
+      <div className="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <table className="w-full border-collapse">
+          <thead className="bg-gray-900 text-gray-300">
+            <tr>
+              <th className="p-3 text-left w-16">#</th>
+              <th className="p-3 text-left">Juego</th>
+              <th className="p-3 text-center">Género</th>
+              <th className="p-3 text-center">⭐ Puntuación</th>
+              <th className="p-3 text-center">💬 Reseñas</th>
+              <th className="p-3 text-center">💰 Precio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentGames.map((game, index) => (
+              <tr
+                key={game._id || index}
+                className="hover:bg-gray-700 transition-all duration-150 border-b border-gray-700"
+              >
+                <td className="p-3 font-bold text-yellow-400 text-center">
+                  {startIndex + index + 1}
+                </td>
+                <td className="flex items-center gap-4 p-3">
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="w-16 h-16 object-cover rounded-md shadow-md"
+                  />
+                  <a
+                    href={`https://store.steampowered.com/app/${game.steamId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-lg font-semibold text-blue-400 hover:text-yellow-400 transition-colors"
+                  >
+                    {game.name}
+                  </a>
+                </td>
+                <td className="text-center p-3 text-gray-300">
+                  {game.genre || "Desconocido"}
+                </td>
+                <td className="text-center p-3 font-bold text-blue-400">
+                  {(game.score * 100).toFixed(1)}
+                </td>
+                <td className="text-center p-3 text-gray-300">
+                  {game.reviews?.toLocaleString() || 0}
+                </td>
+                <td
+                  className={`text-center p-3 font-semibold ${
+                    game.price === 0 ? "text-green-400" : "text-gray-100"
+                  }`}
+                >
+                  {game.price === 0 ? "Gratis" : `$${game.price.toFixed(2)}`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* 🔄 Paginación */}
-      <div className="flex justify-center items-center gap-4">
+      {/* 🔄 Controles de paginación */}
+      <div className="flex justify-center items-center gap-4 mt-6">
         <button
-          onClick={prevPage}
+          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
           className="bg-gray-800 px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-gray-700"
         >
           ⬅️ Anterior
         </button>
-
         <span className="text-lg font-semibold">
           Página {currentPage} de {totalPages}
         </span>
-
         <button
-          onClick={nextPage}
+          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
           disabled={currentPage === totalPages}
           className="bg-gray-800 px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-gray-700"
         >
           Siguiente ➡️
         </button>
       </div>
+
+      <p className="text-center text-gray-400 mt-6">
+        Ranking calculado localmente (rating + reseñas + precio).  
+        Cada título enlaza directo a Steam 🎯
+      </p>
     </div>
   );
 }
