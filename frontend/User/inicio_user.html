@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SteamStorm</title>
+  <link rel="icon" type="image/png" href="../Images/favicon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../CSS/style_inicio.css">
+</head>
+
+<body>
+  <!-- Encabezado -->
+  <header class="encabezado">
+    <img src="../Images/steamstorm_logo_alpha2.png" alt="SteamStorm Logo" width="200" height="54">
+  </header>
+
+  <!-- Sub menú -->
+  <nav class="sub_encabezado"> 
+    <a href="#destacados" class="espaciado_letras_sub">Destacados</a> 
+    <a href="#topjuegos" class="espaciado_letras_sub">Top juegos</a> 
+    <a href="#juegossemanales" class="espaciado_letras_sub">Juegos semanales</a>
+    <a href="#ranking" class="espaciado_letras_sub">Ranking global</a>
+  </nav>
+
+  <!-- Menú lateral -->
+  <div id="menu">
+    <ul>
+      <li class="fa-regular fa-user"><a href="perfil_user.html"> | Perfil</a></li>
+      <li class="fa-regular fa-compass"><a href="nosotros_user.html"> | Sobre nosotros</a></li>
+      <li class="fa-regular fa-thumbs-up"><a href="privacidad_user.html"> | Política de privacidad</a></li>
+      <li class="fa-regular fa-comment"><a href="soporte_user.html"> | Soporte</a></li>
+      <li class="fa-regular fa-rectangle-xmark"><a href="../Guest/inicio_guest.html"> | Cerrar sesión</a></li>
+    </ul>
+  </div>
+  <div id="menu-toggle"><i class="fas fa-list-ul" style="color: #D9D9D9;"></i></div> 
+
+  <!-- SECCIONES PRINCIPALES -->
+
+  <!-- 🎯 JUEGOS DESTACADOS -->
+  <section id="destacados" class="seccion">
+    <h3 class="titulo-seccion"><i class="fa-solid fa-fire"></i> JUEGOS DESTACADOS</h3>
+    <div class="juegos_destacados grid"></div>
+  </section>
+
+  <!-- 🔥 TOP JUEGOS -->
+  <section id="topjuegos" class="seccion">
+    <h3 class="titulo-seccion"><i class="fa-solid fa-ranking-star"></i> TOP JUEGOS</h3>
+    <div class="juegos_top grid"></div>
+  </section>
+
+  <!-- 🕹️ JUEGOS SEMANALES -->
+  <section id="juegossemanales" class="seccion">
+    <h3 class="titulo-seccion"><i class="fa-solid fa-calendar-week"></i> JUEGOS SEMANALES</h3>
+    <div class="juegos_semanales grid"></div>
+  </section>
+  <div class="letras_ranking"><h3 id="ranking">RANKING GLOBAL</h3></div>
+<div class="juegos_ranking grid"></div>
+
+  <!-- 🏆 RANKING GLOBAL -->
+  <section id="ranking" class="seccion">
+    <h3 class="titulo-seccion"><i class="fa-solid fa-trophy"></i> RANKING GLOBAL</h3>
+    <div class="ranking_global grid"></div>
+  </section>
+
+  <!-- Scripts -->
+  <script src="../Scripts/script_Menu.js"></script>
+  <script src="../Scripts/steamgames.js"></script>
+</body>
+</html>
