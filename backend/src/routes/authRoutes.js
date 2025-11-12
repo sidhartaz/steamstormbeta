@@ -1,83 +1,63 @@
 // backend/src/routes/authRoutes.js
-
 import express from 'express';
 import jwt from 'jsonwebtoken';
-// Importamos el modelo (que ya usa export default)
-import User from '../models/User.js'; 
+import User from '../models/User.js';
 
-// Inicializamos el router
 const router = express.Router();
 
-// Función auxiliar para generar JWT
 const generateToken = (id, username) => {
-    // Utiliza la clave secreta definida en el archivo .env
-    return jwt.sign({ id, username }, process.env.JWT_SECRET, {
-        expiresIn: '30d', // El token expira en 30 días
-    });
+  return jwt.sign({ id, username }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
 };
 
-// --- RUTA DE REGISTRO (POST /api/auth/register) ---
+// --- Registro ---
 router.post('/register', async (req, res) => {
-    const { username, email, password } = req.body;
+  const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: 'Por favor, complete todos los campos requeridos.' });
-    }
+  if (!username || !email || !password) {
+    return res.status(400).json({ message: 'Por favor, complete todos los campos.' });
+  }
 
-    try {
-        let userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: 'El usuario ya existe con este correo electrónico.' });
-        }
-        
-        userExists = await User.findOne({ username });
-        if (userExists) {
-            return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
-        }
+  try {
+    let userExists = await User.findOne({ email });
+    if (userExists) return res.status(400).json({ message: 'El correo ya está en uso.' });
 
-        const user = await User.create({ username, email, password });
+    userExists = await User.findOne({ username });
+    if (userExists) return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
 
-        res.status(201).json({
-            _id: user._id,
-            username: user.username,
-            email: user.email,
-            message: 'Registro exitoso.',
-            token: generateToken(user._id, user.username), 
-        });
+    const user = await User.create({ username, email, password });
 
-    } catch (error) {
-        console.error('Error al registrar el usuario:', error);
-        res.status(500).json({ 
-            message: 'Error en el servidor al registrar el usuario.',
-            error: error.message 
-        });
-    }
+    res.status(201).json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      message: 'Registro exitoso.',
+      token: generateToken(user._id, user.username),
+    });
+  } catch (error) {
+    console.error('Error al registrar:', error);
+    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
 });
 
-
-// --- RUTA DE LOGIN (POST /api/auth/login) ---
+// --- Login ---
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // 1. Buscar usuario
-    const user = await User.findOne({ email });
+  const user = await User.findOne({ email });
 
-    // 2. Validar usuario y contraseña
-    if (user && (await user.matchPassword(password))) {
-        
-        // 3. Respuesta exitosa con Token
-        res.json({
-            _id: user._id,
-            username: user.username,
-            email: user.email,
-            message: 'Inicio de sesión exitoso.',
-            token: generateToken(user._id, user.username),
-        });
-    } else {
-        // Fallo de autenticación
-        return res.status(401).json({ message: 'Correo electrónico o contraseña inválidos.' });
-    }
+  if (user && (await user.matchPassword(password))) {
+    res.json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      message: 'Inicio de sesión exitoso.',
+      token: generateToken(user._id, user.username),
+    });
+  } else {
+    res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
+  }
 });
 
-// Exportamos el router usando ES Modules
 export default router;
